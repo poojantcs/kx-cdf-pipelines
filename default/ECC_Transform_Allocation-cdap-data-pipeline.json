@@ -1,0 +1,1235 @@
+{
+    "name": "ECC_Transform_Allocation",
+    "description": "Data Pipeline Application",
+    "artifact": {
+        "name": "cdap-data-pipeline",
+        "version": "6.9.1",
+        "scope": "SYSTEM"
+    },
+    "config": {
+        "resources": {
+            "memoryMB": 8192,
+            "virtualCores": 2
+        },
+        "driverResources": {
+            "memoryMB": 2048,
+            "virtualCores": 1
+        },
+        "connections": [
+            {
+                "from": "RESB_Source",
+                "to": "manualReservations_transform"
+            },
+            {
+                "from": "manualReservations_transform",
+                "to": "Union_All"
+            },
+            {
+                "from": "Union_All",
+                "to": "Allocation Repartitioner"
+            },
+            {
+                "from": "Allocation Repartitioner",
+                "to": "Allocation"
+            },
+            {
+                "from": "Allocation",
+                "to": "Post Processing"
+            },
+            {
+                "from": "firmedReservations_filter",
+                "to": "firmedReservations_LeftOuter_PLAF"
+            },
+            {
+                "from": "firmedReservations_LeftOuter_PLAF",
+                "to": "RejectedUnfirmReservations_filter_rejects"
+            },
+            {
+                "from": "firmedReservations_LeftOuter_PLAF",
+                "to": "firmedReservations_transform"
+            },
+            {
+                "from": "RejectedUnfirmReservations_filter_rejects",
+                "to": "RejectedUnfirmReservations"
+            },
+            {
+                "from": "PLAF_Source",
+                "to": "firmedReservations_LeftOuter_PLAF"
+            },
+            {
+                "from": "RESB_Source",
+                "to": "firmedReservations_filter"
+            },
+            {
+                "from": "firmedReservations_transform",
+                "to": "Union_All"
+            },
+            {
+                "from": "dependentReservations_filter",
+                "to": "dependantReservations_LeftOuter_CAUFV"
+            },
+            {
+                "from": "dependantReservations_LeftOuter_CAUFV",
+                "to": "dependantReservations_CAUFV_LeftOuter_AFPO"
+            },
+            {
+                "from": "dependantReservations_CAUFV_LeftOuter_AFPO",
+                "to": "RejectedReservationsWithoutPO_filter_rejects"
+            },
+            {
+                "from": "dependantReservations_CAUFV_LeftOuter_AFPO",
+                "to": "dependantReservations_transform"
+            },
+            {
+                "from": "RejectedReservationsWithoutPO_filter_rejects",
+                "to": "RejectedReservationsWithoutPO"
+            },
+            {
+                "from": "CAUFV_Source",
+                "to": "dependantReservations_LeftOuter_CAUFV"
+            },
+            {
+                "from": "AFPO_Source",
+                "to": "dependantReservations_CAUFV_LeftOuter_AFPO"
+            },
+            {
+                "from": "RESB_Source",
+                "to": "dependentReservations_filter"
+            },
+            {
+                "from": "dependantReservations_transform",
+                "to": "Union_All"
+            },
+            {
+                "from": "dependantReservations_filter",
+                "to": "dependantReservations_LeftOuter_purchaseDocumentsWithDependencies"
+            },
+            {
+                "from": "dependantReservations_LeftOuter_purchaseDocumentsWithDependencies",
+                "to": "purchaseDocumentsWithDependencies_transform"
+            },
+            {
+                "from": "dependantReservations_LeftOuter_purchaseDocumentsWithDependencies",
+                "to": "RejectedReservationsWithoutProdOrd_filter_rejects"
+            },
+            {
+                "from": "EKET_Source",
+                "to": "EKET_filter"
+            },
+            {
+                "from": "EKET_filter",
+                "to": "EKET_innerjoin_EKPO"
+            },
+            {
+                "from": "EKET_innerjoin_EKPO",
+                "to": "EKET_EKPO_innerjoin_EKKO"
+            },
+            {
+                "from": "EKET_EKPO_innerjoin_EKKO",
+                "to": "dependantReservations_LeftOuter_purchaseDocumentsWithDependencies"
+            },
+            {
+                "from": "EKPO_Source",
+                "to": "EKET_innerjoin_EKPO"
+            },
+            {
+                "from": "EKKO_Source",
+                "to": "EKET_EKPO_innerjoin_EKKO"
+            },
+            {
+                "from": "RejectedReservationsWithoutProdOrd_filter_rejects",
+                "to": "RejectedReservationsWithoutProdOrd"
+            },
+            {
+                "from": "RESB_Source",
+                "to": "dependantReservations_filter"
+            },
+            {
+                "from": "purchaseDocumentsWithDependencies_transform",
+                "to": "Union_All"
+            }
+        ],
+        "comments": [],
+        "postActions": [],
+        "properties": {},
+        "processTimingEnabled": true,
+        "stageLoggingEnabled": false,
+        "stages": [
+            {
+                "name": "RESB_Source",
+                "plugin": {
+                    "name": "GCSFile",
+                    "type": "batchsource",
+                    "label": "RESB_Source",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "RESB_Source",
+                        "path": "${extracted-data-bucket}/${source}.${timestamp}/RESB.tab",
+                        "format": "tsv",
+                        "sampleSize": "1000",
+                        "filenameOnly": "false",
+                        "recursive": "false",
+                        "ignoreNonExistingFolders": "false",
+                        "encrypted": "false",
+                        "fileEncoding": "UTF-8",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                        "enableQuotedValues": "false",
+                        "skipHeader": "true",
+                        "maxSplitSize": "${GCS_SOURCE_MAXIMUM_SPLIT_SIZE}"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "id": "RESB_Source"
+            },
+            {
+                "name": "manualReservations_transform",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "manualReservations_transform",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "BDART !~ \"MR\"",
+                        "directives": "set-column PartName MATNR\r\nset-column PartSiteValue WERKS\r\nset-column ScheduledReceiptLine format(\"%6.0f\",RSPOS).replace(\" \",\"0\")\r\nset-column ScheduledReceiptOrderId format(\"%.0f\",RSNUM).replace(\" \",\"0\")\r\nset-column ScheduledReceiptOrderSiteValue WERKS\r\nset-column ScheduledReceiptOrderTypeValue BDART\r\nset-column DueDate BDTER\r\nset-column RemainingQuantity BDMNG - ENMNG\r\nset-column TotalQuantity BDMNG\r\nset-column ShopSiteValue WERKS",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "information": {
+                    "comments": {
+                        "list": [
+                            {
+                                "content": "PartName\n--\nset-column PartName MATNR\n\nPartSiteValue\n--\nset-column PartSiteValue WERKS\n\nScheduledReceiptLine\n--\nset-column ScheduledReceiptLine format(\"%6.0f\",RSPOS).replace(\" \",\"0\")\n\nScheduledReceiptOrderId\n--\nset-column ScheduledReceiptOrderId format(\"%.0f\",RSNUM).replace(\" \",\"0\")\n\nScheduledReceiptOrderSiteValue\n--\nset-column ScheduledReceiptOrderSiteValue WERKS\n\nScheduledReceiptOrderTypeValue\n--\nset-column ScheduledReceiptOrderTypeValue BDART\n\nDueDate\n--\nset-column DueDate BDTER\n\nRemainingQuantity\n--\nset-column RemainingQuantity BDMNG - ENMNG\n\nTotalQuantity\n--\nset-column TotalQuantity BDMNG\n\nShopSiteValue\n--\nset-column ShopSiteValue WERKS",
+                                "createDate": 1679067250462
+                            }
+                        ]
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "RESB_Source",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "manualReservations_transform"
+            },
+            {
+                "name": "Union_All",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "Union_All",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "false",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"BaseKey\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"StartUnit\",\"type\":[\"int\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"ShopAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                        "directives": "set-column BaseKey \"\"\nfind-and-replace PartName s/^0+(?!$)//g\nset-column StartUnit -1\nset-column ShopAddress \"NoShop\"\nset-type RemainingQuantity decimal\nset-column:RemainingQuantity exp:{RemainingQuantity==null?null:RemainingQuantity.setScale(4,4)}\n\nset-type TotalQuantity decimal\nset-column:TotalQuantity exp:{TotalQuantity==null?null:TotalQuantity.setScale(4,4)}"
+                    }
+                },
+                "information": {
+                    "comments": {
+                        "list": [
+                            {
+                                "content": "BaseKey\n--\nset-column BaseKey \"\"\n\nPartName\n--\nfind-and-replace PartName s/^0+(?!$)//g\n\nStartUnit\n--\nset-column StartUnit -1\n\nShopAddress\n--\nset-column ShopAddress \"NoShop\"\n\nRemainingQuantity\n--\nset-column:RemainingQuantity exp:{RemainingQuantity==null?null:RemainingQuantity.setScale(4,4)}\n\nTotalQuantity\n--\nset-type TotalQuantity decimal\nset-column:TotalQuantity exp:{TotalQuantity==null?null:TotalQuantity.setScale(4,4)}",
+                                "createDate": 1679067250462
+                            }
+                        ]
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"BaseKey\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"StartUnit\",\"type\":[\"int\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"ShopAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "manualReservations_transform",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "firmedReservations_transform",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "dependantReservations_transform",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "purchaseDocumentsWithDependencies_transform",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "Union_All"
+            },
+            {
+                "name": "Allocation Repartitioner",
+                "plugin": {
+                    "name": "Repartitioner",
+                    "type": "sparkcompute",
+                    "label": "Allocation Repartitioner",
+                    "artifact": {
+                        "name": "repartitioner",
+                        "version": "1.2.0",
+                        "scope": "USER"
+                    },
+                    "properties": {
+                        "partitions": "${REPARTITION_NUMBER_FOR_SINK}",
+                        "shuffle": "${repartition-shuffle-data}"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"BaseKey\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"StartUnit\",\"type\":[\"int\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"ShopAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "Union_All",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"BaseKey\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"StartUnit\",\"type\":[\"int\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"ShopAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "Allocation-Repartitioner"
+            },
+            {
+                "name": "Allocation",
+                "plugin": {
+                    "name": "GCS",
+                    "type": "batchsink",
+                    "label": "Allocation",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "Allocation",
+                        "path": "${transformed-data-bucket}/${source}.${timestamp}/Allocation",
+                        "format": "tsv",
+                        "location": "us",
+                        "contentType": "application/octet-stream",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"BaseKey\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"StartUnit\",\"type\":[\"int\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"ShopAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                        "writeHeader": "false",
+                        "outputFileNameBase": "Allocation"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"BaseKey\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"StartUnit\",\"type\":[\"int\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"ShopAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "Allocation Repartitioner",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"BaseKey\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"StartUnit\",\"type\":[\"int\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":32,\"scale\":4},\"null\"]},{\"name\":\"ShopAddress\",\"type\":[\"string\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "Allocation"
+            },
+            {
+                "name": "Post Processing",
+                "plugin": {
+                    "name": "PySparkProgram",
+                    "type": "sparkprogram",
+                    "label": "Post Processing",
+                    "artifact": {
+                        "name": "dynamic-spark",
+                        "version": "2.2.3",
+                        "scope": "USER"
+                    },
+                    "properties": {
+                        "pythonCode": "from pyspark import *\nfrom pyspark.sql import *\nfrom cdap.pyspark import SparkExecutionContext\nimport google.auth\nfrom google.cloud import storage\nimport traceback\nimport re\nimport logging\n\nsec = SparkExecutionContext()\nsc = SparkContext()\n\n# reading the required properties from runtime arguments\nproject_id = \"${project-id}\"\ntransformed_data_bucket_name = \"${transformed-data-bucket}\" if \"gs://\" not in \"${transformed-data-bucket}\" else \"${transformed-data-bucket}\".split(\"gs://\")[1]\nsource = \"${source}\"\ntimestamp = \"${timestamp}\"\ntransformed_data_dir = source + \".\" + timestamp\ntarget_files = \"${transformed-files}\"\n\nstorage_client = storage.Client()\ntransformed_data_bucket = storage_client.get_bucket(transformed_data_bucket_name)\n\ndef list_blobs_with_prefix(bucket_name, prefix, delimiter):\n  blobs = storage_client.list_blobs(transformed_data_bucket_name, prefix=prefix, delimiter=delimiter)\n  return blobs\n\ndef rename_target_file(file_name):\n  file_prefix = transformed_data_dir + \"/\" + file_name + \"/\"\n  blobs = list_blobs_with_prefix(transformed_data_bucket_name,file_prefix,'/')\n  for blob in blobs:\n    blob_name = blob.name\n    if file_name in blob_name:\n      blob_size = f\"{blob.size} bytes\"\n    \n      if blob_size == \"0 bytes\":\n        blob.delete()\n      else:\n        pattern = \"-r-\\d{5}\"\n        result = re.findall(pattern, blob_name)\n        if result:\n          updated_blob_name = blob_name.split(\"/\")[-1].replace(\"-r-\", \".\") + \".tab\" #renaming file name\n          updated_blob_path = \"{}/{}\".format(transformed_data_dir, updated_blob_name)\n          transformed_data_bucket.rename_blob(blob, new_name=updated_blob_path)\n\ndef rename_all_target_files():\n  print(f\"--------------------List of Target Files: {target_files}--------------------\")\n  files = target_files.split(',')\n  for file in files:\n    print(f\"--------------------Renaming Target File: {file}--------------------\")\n    rename_target_file(file)\n  \n\ntry:\n    print(\"<==================Post processing execution STARTED================================>\")\n    rename_all_target_files()\n    print(\"<==================Post processing execution COMPLETED==============================>\")\nexcept:\n    logging.info(\"Into Exception\")\n    exception_error_message = traceback.format_exc()\n    logging.info(exception_error_message)"
+                    }
+                },
+                "outputSchema": "",
+                "id": "Post-Processing"
+            },
+            {
+                "name": "firmedReservations_filter",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "firmedReservations_filter",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "BDART !~ \"SB\" || BDMNG <= 0",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "information": {
+                    "comments": {
+                        "list": [
+                            {
+                                "content": "Filter out BDART not equal to “SB” or BDMNG <= 0",
+                                "createDate": 1679067250462
+                            }
+                        ]
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "RESB_Source",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "firmedReservations_filter"
+            },
+            {
+                "name": "firmedReservations_LeftOuter_PLAF",
+                "plugin": {
+                    "name": "Joiner",
+                    "type": "batchjoiner",
+                    "label": "firmedReservations_LeftOuter_PLAF",
+                    "artifact": {
+                        "name": "core-plugins",
+                        "version": "2.11.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "selectedFields": "firmedReservations_filter.MANDT as RESB_MANDT,firmedReservations_filter.RSART as RESB_RSART,firmedReservations_filter.RSNUM as RESB_RSNUM,firmedReservations_filter.RSPOS as RESB_RSPOS,firmedReservations_filter.AUFNR as RESB_AUFNR,firmedReservations_filter.BAUGR as RESB_BAUGR,firmedReservations_filter.BDART as RESB_BDART,firmedReservations_filter.BDMNG as RESB_BDMNG,firmedReservations_filter.BDTER as RESB_BDTER,firmedReservations_filter.BWART as RESB_BWART,firmedReservations_filter.EBELE as RESB_EBELE,firmedReservations_filter.EBELN as RESB_EBELN,firmedReservations_filter.EBELP as RESB_EBELP,firmedReservations_filter.ENMNG as RESB_ENMNG,firmedReservations_filter.LGORT as RESB_LGORT,firmedReservations_filter.LIFNR as RESB_LIFNR,firmedReservations_filter.MATNR as RESB_MATNR,firmedReservations_filter.POSNR as RESB_POSNR,firmedReservations_filter.SHKZG as RESB_SHKZG,firmedReservations_filter.UMLGO as RESB_UMLGO,firmedReservations_filter.UMWRK as RESB_UMWRK,firmedReservations_filter.VORNR as RESB_VORNR,firmedReservations_filter.WAERS as RESB_WAERS,firmedReservations_filter.WERKS as RESB_WERKS,PLAF_Source.MANDT as PLAF_MANDT,PLAF_Source.PLNUM as PLAF_PLNUM,PLAF_Source.AUFFX as PLAF_AUFFX,PLAF_Source.BEDID as PLAF_BEDID,PLAF_Source.GSMNG as PLAF_GSMNG,PLAF_Source.KDAUF as PLAF_KDAUF,PLAF_Source.KDPOS as PLAF_KDPOS,PLAF_Source.LGORT as PLAF_LGORT,PLAF_Source.LVSCH as PLAF_LVSCH,PLAF_Source.MATNR as PLAF_MATNR,PLAF_Source.MEINS as PLAF_MEINS,PLAF_Source.PAART as PLAF_PAART,PLAF_Source.PEDTR as PLAF_PEDTR,PLAF_Source.PLWRK as PLAF_PLWRK,PLAF_Source.PSTTR as PLAF_PSTTR,PLAF_Source.PWWRK as PLAF_PWWRK,PLAF_Source.RSNUM as PLAF_RSNUM,PLAF_Source.SERNR as PLAF_SERNR,PLAF_Source.SOBES as PLAF_SOBES,PLAF_Source.WEBAZ as PLAF_WEBAZ",
+                        "requiredInputs": "firmedReservations_filter",
+                        "conditionType": "basic",
+                        "joinKeys": "PLAF_Source.RSNUM = firmedReservations_filter.RSNUM",
+                        "joinNullKeys": "false",
+                        "distributionEnabled": "false",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PLNUM\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_AUFFX\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_BEDID\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_GSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_LVSCH\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PAART\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PEDTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PLWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PSTTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PWWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_SOBES\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_WEBAZ\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PLNUM\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_AUFFX\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_BEDID\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_GSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_LVSCH\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PAART\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PEDTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PLWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PSTTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PWWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_SOBES\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_WEBAZ\",\"type\":[\"double\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "firmedReservations_filter",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "PLAF_Source",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNUM\",\"type\":[\"string\",\"null\"]},{\"name\":\"AUFFX\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDID\",\"type\":[\"double\",\"null\"]},{\"name\":\"GSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LVSCH\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PAART\",\"type\":[\"string\",\"null\"]},{\"name\":\"PEDTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PSTTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PWWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SOBES\",\"type\":[\"string\",\"null\"]},{\"name\":\"WEBAZ\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                ],
+                "id": "firmedReservations_LeftOuter_PLAF"
+            },
+            {
+                "name": "RejectedUnfirmReservations_filter_rejects",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "RejectedUnfirmReservations_filter_rejects",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "RESB_RSNUM == PLAF_RSNUM && PLAF_AUFFX == \"X\" && PLAF_PLNUM !~ null",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "information": {
+                    "comments": {}
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "firmedReservations_LeftOuter_PLAF",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PLNUM\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_AUFFX\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_BEDID\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_GSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_LVSCH\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PAART\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PEDTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PLWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PSTTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PWWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_SOBES\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_WEBAZ\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                ],
+                "id": "RejectedUnfirmReservations_filter_rejects"
+            },
+            {
+                "name": "firmedReservations_transform",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "firmedReservations_transform",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "RESB_RSNUM !~ PLAF_RSNUM or PLAF_AUFFX !~ \"X\" or PLAF_PLNUM == null",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                        "directives": "set-column PartName RESB_MATNR\r\nset-column PartSiteValue RESB_WERKS\r\nset-column ScheduledReceiptLine \"000001\"\r\nfind-and-replace PLAF_PLNUM s/^0*//g\r\nset-column ScheduledReceiptOrderId PLAF_PLNUM\r\nset-column ScheduledReceiptOrderSiteValue PLAF_PLWRK\r\nset-column ScheduledReceiptOrderTypeValue PLAF_PAART\r\nset-column DueDate RESB_BDTER\r\nset-column RemainingQuantity RESB_BDMNG - RESB_ENMNG\r\nset-column TotalQuantity RESB_BDMNG\r\nset-column ShopSiteValue RESB_WERKS"
+                    }
+                },
+                "information": {
+                    "comments": {
+                        "list": [
+                            {
+                                "content": "PartName\n--\nset-column PartName RESB_MATNR\n\nPartSiteValue\n--\nset-column PartSiteValue RESB_WERKS\n\nScheduledReceiptLine\n--\nset-column ScheduledReceiptLine \"000001\"\n\nScheduledReceiptOrderId\n--\nfind-and-replace PLAF_PLNUM s/^0*//g\nset-column ScheduledReceiptOrderId PLAF_PLNUM\n\nScheduledReceiptOrderSiteValue\n--\nset-column ScheduledReceiptOrderSiteValue PLAF_PLWRK\n\nScheduledReceiptOrderTypeValue\n--\nset-column ScheduledReceiptOrderTypeValue PLAF_PAART\n\nDueDate\n--\nset-column DueDate RESB_BDTER\n\nRemainingQuantity\n--\nset-column RemainingQuantity RESB_BDMNG - RESB_ENMNG\n\nTotalQuantity\n--\nset-column TotalQuantity RESB_BDMNG\n\nShopSiteValue\n--\nset-column ShopSiteValue RESB_WERKS",
+                                "createDate": 1679067250462
+                            }
+                        ]
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "firmedReservations_LeftOuter_PLAF",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PLNUM\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_AUFFX\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_BEDID\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_GSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_LVSCH\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PAART\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PEDTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PLWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PSTTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_PWWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLAF_SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_SOBES\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLAF_WEBAZ\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                ],
+                "id": "firmedReservations_transform"
+            },
+            {
+                "name": "RejectedUnfirmReservations",
+                "plugin": {
+                    "name": "GCS",
+                    "type": "batchsink",
+                    "label": "RejectedUnfirmReservations",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "RejectedUnfirmReservations",
+                        "path": "${intermediate-data-bucket}/${source}.${timestamp}/Allocation/RejectedUnfirmReservations",
+                        "format": "tsv",
+                        "location": "us",
+                        "contentType": "application/octet-stream",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                        "writeHeader": "true",
+                        "outputFileNameBase": "RejectedUnfirmReservations"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "RejectedUnfirmReservations_filter_rejects",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "RejectedUnfirmReservations"
+            },
+            {
+                "name": "PLAF_Source",
+                "plugin": {
+                    "name": "GCSFile",
+                    "type": "batchsource",
+                    "label": "PLAF_Source",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "PLAF_Source",
+                        "path": "${extracted-data-bucket}/${source}.${timestamp}/PLAF.tab",
+                        "format": "tsv",
+                        "sampleSize": "1000",
+                        "filenameOnly": "false",
+                        "recursive": "false",
+                        "ignoreNonExistingFolders": "false",
+                        "encrypted": "false",
+                        "fileEncoding": "UTF-8",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNUM\",\"type\":[\"string\",\"null\"]},{\"name\":\"AUFFX\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDID\",\"type\":[\"double\",\"null\"]},{\"name\":\"GSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LVSCH\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PAART\",\"type\":[\"string\",\"null\"]},{\"name\":\"PEDTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PSTTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PWWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SOBES\",\"type\":[\"string\",\"null\"]},{\"name\":\"WEBAZ\",\"type\":[\"double\",\"null\"]}]}",
+                        "enableQuotedValues": "false",
+                        "skipHeader": "true",
+                        "maxSplitSize": "${GCS_SOURCE_MAXIMUM_SPLIT_SIZE}"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNUM\",\"type\":[\"string\",\"null\"]},{\"name\":\"AUFFX\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDID\",\"type\":[\"double\",\"null\"]},{\"name\":\"GSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LVSCH\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"PAART\",\"type\":[\"string\",\"null\"]},{\"name\":\"PEDTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"PSTTR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PWWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SOBES\",\"type\":[\"string\",\"null\"]},{\"name\":\"WEBAZ\",\"type\":[\"double\",\"null\"]}]}",
+                "id": "PLAF_Source"
+            },
+            {
+                "name": "dependentReservations_filter",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "dependentReservations_filter",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "MATNR == null || BDART !~ \"AR\" || RSNUM == 0",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "information": {
+                    "comments": {
+                        "list": [
+                            {
+                                "content": "Filter out MATNR is null or BDART not equal to “AR” or RSNUM is equal to 0",
+                                "createDate": 1679067250462
+                            }
+                        ]
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "RESB_Source",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "dependentReservations_filter"
+            },
+            {
+                "name": "dependantReservations_LeftOuter_CAUFV",
+                "plugin": {
+                    "name": "Joiner",
+                    "type": "batchjoiner",
+                    "label": "dependantReservations_LeftOuter_CAUFV",
+                    "artifact": {
+                        "name": "core-plugins",
+                        "version": "2.11.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "selectedFields": "dependentReservations_filter.MANDT as RESB_MANDT,dependentReservations_filter.RSART as RESB_RSART,dependentReservations_filter.RSNUM as RESB_RSNUM,dependentReservations_filter.RSPOS as RESB_RSPOS,dependentReservations_filter.AUFNR as RESB_AUFNR,dependentReservations_filter.BAUGR as RESB_BAUGR,dependentReservations_filter.BDART as RESB_BDART,dependentReservations_filter.BDMNG as RESB_BDMNG,dependentReservations_filter.BDTER as RESB_BDTER,dependentReservations_filter.BWART as RESB_BWART,dependentReservations_filter.EBELE as RESB_EBELE,dependentReservations_filter.EBELN as RESB_EBELN,dependentReservations_filter.EBELP as RESB_EBELP,dependentReservations_filter.ENMNG as RESB_ENMNG,dependentReservations_filter.LGORT as RESB_LGORT,dependentReservations_filter.LIFNR as RESB_LIFNR,dependentReservations_filter.MATNR as RESB_MATNR,dependentReservations_filter.POSNR as RESB_POSNR,dependentReservations_filter.SHKZG as RESB_SHKZG,dependentReservations_filter.UMLGO as RESB_UMLGO,dependentReservations_filter.UMWRK as RESB_UMWRK,dependentReservations_filter.VORNR as RESB_VORNR,dependentReservations_filter.WAERS as RESB_WAERS,dependentReservations_filter.WERKS as RESB_WERKS,CAUFV_Source.AUFNR as CAUFV_AUFNR,CAUFV_Source.MANDT as CAUFV_MANDT,CAUFV_Source.AUART as CAUFV_AUART,CAUFV_Source.AUTYP as CAUFV_AUTYP,CAUFV_Source.GAMNG as CAUFV_GAMNG,CAUFV_Source.GLTRI as CAUFV_GLTRI,CAUFV_Source.GLTRP as CAUFV_GLTRP,CAUFV_Source.GLTRS as CAUFV_GLTRS,CAUFV_Source.GMEIN as CAUFV_GMEIN,CAUFV_Source.GSTRI as CAUFV_GSTRI,CAUFV_Source.GSTRP as CAUFV_GSTRP,CAUFV_Source.GSTRS as CAUFV_GSTRS,CAUFV_Source.IGMNG as CAUFV_IGMNG,CAUFV_Source.KDAUF as CAUFV_KDAUF,CAUFV_Source.KDPOS as CAUFV_KDPOS,CAUFV_Source.OBJNR as CAUFV_OBJNR,CAUFV_Source.PLNAL as CAUFV_PLNAL,CAUFV_Source.PLNBEZ as CAUFV_PLNBEZ,CAUFV_Source.PLNNR as CAUFV_PLNNR,CAUFV_Source.PLNTY as CAUFV_PLNTY,CAUFV_Source.RSNUM as CAUFV_RSNUM,CAUFV_Source.STLBEZ as CAUFV_STLBEZ,CAUFV_Source.WAERS as CAUFV_WAERS,CAUFV_Source.WERKS as CAUFV_WERKS",
+                        "requiredInputs": "dependentReservations_filter",
+                        "conditionType": "basic",
+                        "joinKeys": "CAUFV_Source.RSNUM = dependentReservations_filter.RSNUM",
+                        "joinNullKeys": "false",
+                        "distributionEnabled": "false",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUART\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUTYP\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GLTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GMEIN\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_IGMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_OBJNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNAL\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNTY\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_STLBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUART\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUTYP\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GLTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GMEIN\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_IGMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_OBJNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNAL\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNTY\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_STLBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "dependentReservations_filter",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "CAUFV_Source",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"AUART\",\"type\":[\"string\",\"null\"]},{\"name\":\"AUTYP\",\"type\":[\"double\",\"null\"]},{\"name\":\"GAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"GLTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"GMEIN\",\"type\":[\"string\",\"null\"]},{\"name\":\"GSTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"GSTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"GSTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"IGMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"OBJNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNAL\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNTY\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"STLBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "dependantReservations_LeftOuter_CAUFV"
+            },
+            {
+                "name": "dependantReservations_CAUFV_LeftOuter_AFPO",
+                "plugin": {
+                    "name": "Joiner",
+                    "type": "batchjoiner",
+                    "label": "dependantReservations_CAUFV_LeftOuter_AFPO",
+                    "artifact": {
+                        "name": "core-plugins",
+                        "version": "2.11.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "selectedFields": "dependantReservations_LeftOuter_CAUFV.RESB_MANDT as RESB_MANDT,dependantReservations_LeftOuter_CAUFV.RESB_RSART as RESB_RSART,dependantReservations_LeftOuter_CAUFV.RESB_RSNUM as RESB_RSNUM,dependantReservations_LeftOuter_CAUFV.RESB_RSPOS as RESB_RSPOS,dependantReservations_LeftOuter_CAUFV.RESB_AUFNR as RESB_AUFNR,dependantReservations_LeftOuter_CAUFV.RESB_BAUGR as RESB_BAUGR,dependantReservations_LeftOuter_CAUFV.RESB_BDART as RESB_BDART,dependantReservations_LeftOuter_CAUFV.RESB_BDMNG as RESB_BDMNG,dependantReservations_LeftOuter_CAUFV.RESB_BDTER as RESB_BDTER,dependantReservations_LeftOuter_CAUFV.RESB_BWART as RESB_BWART,dependantReservations_LeftOuter_CAUFV.RESB_EBELE as RESB_EBELE,dependantReservations_LeftOuter_CAUFV.RESB_EBELN as RESB_EBELN,dependantReservations_LeftOuter_CAUFV.RESB_EBELP as RESB_EBELP,dependantReservations_LeftOuter_CAUFV.RESB_ENMNG as RESB_ENMNG,dependantReservations_LeftOuter_CAUFV.RESB_LGORT as RESB_LGORT,dependantReservations_LeftOuter_CAUFV.RESB_LIFNR as RESB_LIFNR,dependantReservations_LeftOuter_CAUFV.RESB_MATNR as RESB_MATNR,dependantReservations_LeftOuter_CAUFV.RESB_POSNR as RESB_POSNR,dependantReservations_LeftOuter_CAUFV.RESB_SHKZG as RESB_SHKZG,dependantReservations_LeftOuter_CAUFV.RESB_UMLGO as RESB_UMLGO,dependantReservations_LeftOuter_CAUFV.RESB_UMWRK as RESB_UMWRK,dependantReservations_LeftOuter_CAUFV.RESB_VORNR as RESB_VORNR,dependantReservations_LeftOuter_CAUFV.RESB_WAERS as RESB_WAERS,dependantReservations_LeftOuter_CAUFV.RESB_WERKS as RESB_WERKS,dependantReservations_LeftOuter_CAUFV.CAUFV_AUFNR as CAUFV_AUFNR,dependantReservations_LeftOuter_CAUFV.CAUFV_MANDT as CAUFV_MANDT,dependantReservations_LeftOuter_CAUFV.CAUFV_AUART as CAUFV_AUART,dependantReservations_LeftOuter_CAUFV.CAUFV_AUTYP as CAUFV_AUTYP,dependantReservations_LeftOuter_CAUFV.CAUFV_GAMNG as CAUFV_GAMNG,dependantReservations_LeftOuter_CAUFV.CAUFV_GLTRI as CAUFV_GLTRI,dependantReservations_LeftOuter_CAUFV.CAUFV_GLTRP as CAUFV_GLTRP,dependantReservations_LeftOuter_CAUFV.CAUFV_GLTRS as CAUFV_GLTRS,dependantReservations_LeftOuter_CAUFV.CAUFV_GMEIN as CAUFV_GMEIN,dependantReservations_LeftOuter_CAUFV.CAUFV_GSTRI as CAUFV_GSTRI,dependantReservations_LeftOuter_CAUFV.CAUFV_GSTRP as CAUFV_GSTRP,dependantReservations_LeftOuter_CAUFV.CAUFV_GSTRS as CAUFV_GSTRS,dependantReservations_LeftOuter_CAUFV.CAUFV_IGMNG as CAUFV_IGMNG,dependantReservations_LeftOuter_CAUFV.CAUFV_KDAUF as CAUFV_KDAUF,dependantReservations_LeftOuter_CAUFV.CAUFV_KDPOS as CAUFV_KDPOS,dependantReservations_LeftOuter_CAUFV.CAUFV_OBJNR as CAUFV_OBJNR,dependantReservations_LeftOuter_CAUFV.CAUFV_PLNAL as CAUFV_PLNAL,dependantReservations_LeftOuter_CAUFV.CAUFV_PLNBEZ as CAUFV_PLNBEZ,dependantReservations_LeftOuter_CAUFV.CAUFV_PLNNR as CAUFV_PLNNR,dependantReservations_LeftOuter_CAUFV.CAUFV_PLNTY as CAUFV_PLNTY,dependantReservations_LeftOuter_CAUFV.CAUFV_RSNUM as CAUFV_RSNUM,dependantReservations_LeftOuter_CAUFV.CAUFV_STLBEZ as CAUFV_STLBEZ,dependantReservations_LeftOuter_CAUFV.CAUFV_WAERS as CAUFV_WAERS,dependantReservations_LeftOuter_CAUFV.CAUFV_WERKS as CAUFV_WERKS,AFPO_Source.AUFNR as AFPO_AUFNR,AFPO_Source.MANDT as AFPO_MANDT,AFPO_Source.POSNR as AFPO_POSNR,AFPO_Source.BERID as AFPO_BERID,AFPO_Source.MATNR as AFPO_MATNR,AFPO_Source.PSMNG as AFPO_PSMNG,AFPO_Source.PWERK as AFPO_PWERK,AFPO_Source.SERNR as AFPO_SERNR,AFPO_Source.WEBAZ as AFPO_WEBAZ,AFPO_Source.WEMNG as AFPO_WEMNG",
+                        "requiredInputs": "dependantReservations_LeftOuter_CAUFV",
+                        "conditionType": "basic",
+                        "joinKeys": "dependantReservations_LeftOuter_CAUFV.RESB_AUFNR = AFPO_Source.AUFNR & dependantReservations_LeftOuter_CAUFV.RESB_BAUGR = AFPO_Source.MATNR",
+                        "joinNullKeys": "false",
+                        "distributionEnabled": "false",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUART\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUTYP\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GLTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GMEIN\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_IGMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_OBJNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNAL\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNTY\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_STLBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_POSNR\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_PSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_PWERK\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_WEMNG\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUART\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUTYP\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GLTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GMEIN\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_IGMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_OBJNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNAL\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNTY\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_STLBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_POSNR\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_PSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_PWERK\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_WEMNG\",\"type\":[\"double\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "dependantReservations_LeftOuter_CAUFV",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUART\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUTYP\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GLTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GMEIN\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_IGMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_OBJNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNAL\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNTY\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_STLBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "AFPO_Source",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"double\",\"null\"]},{\"name\":\"BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"PWERK\",\"type\":[\"string\",\"null\"]},{\"name\":\"SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEMNG\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                ],
+                "id": "dependantReservations_CAUFV_LeftOuter_AFPO"
+            },
+            {
+                "name": "RejectedReservationsWithoutPO_filter_rejects",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "RejectedReservationsWithoutPO_filter_rejects",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "(RESB_RSNUM == CAUFV_RSNUM) && (RESB_AUFNR == AFPO_AUFNR && RESB_BAUGR) ==  AFPO_MATNR",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "information": {
+                    "comments": {}
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "dependantReservations_CAUFV_LeftOuter_AFPO",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUART\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUTYP\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GLTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GMEIN\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_IGMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_OBJNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNAL\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNTY\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_STLBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_POSNR\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_PSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_PWERK\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_WEMNG\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                ],
+                "id": "RejectedReservationsWithoutPO_filter_rejects"
+            },
+            {
+                "name": "dependantReservations_transform",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "dependantReservations_transform",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "(RESB_RSNUM !~ CAUFV_RSNUM) || (RESB_AUFNR !~ AFPO_AUFNR || RESB_BAUGR !~  AFPO_MATNR)",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                        "directives": "set-column PartName RESB_MATNR\nset-column PartSiteValue RESB_WERKS\nset-column :ScheduledReceiptLine AFPO_POSNR == null ? \"\" :format(\"%6.0f\",AFPO_POSNR).replace(\" \",\"0\")\nfind-and-replace CAUFV_AUFNR s/^0*//g\nset-column :ScheduledReceiptOrderId CAUFV_AUFNR\nfind-and-replace CAUFV_WERKS s/^0*//g\nset-column ScheduledReceiptOrderSiteValue CAUFV_WERKS\nset-column ScheduledReceiptOrderTypeValue CAUFV_AUART\nset-column DueDate RESB_BDTER\nset-column RemainingQuantity RESB_BDMNG - RESB_ENMNG\nset-column TotalQuantity RESB_BDMNG\nset-column ShopSiteValue RESB_WERKS"
+                    }
+                },
+                "information": {
+                    "comments": {
+                        "list": [
+                            {
+                                "content": "PartName\n--\nset-column PartName RESB_MATNR\n\nPartSiteValue\n--\nset-column PartSiteValue RESB_WERKS\n\nScheduledReceiptLine\n--\nset-column :ScheduledReceiptLine AFPO_POSNR == null ? \"\" :format(\"%6.0f\",AFPO_POSNR).replace(\" \",\"0\")\n\nScheduledReceiptOrderId\n--\nfind-and-replace CAUFV_AUFNR s/^0*//g\nset-column :ScheduledReceiptOrderId CAUFV_AUFNR\n\nScheduledReceiptOrderSiteValue\n--\nfind-and-replace CAUFV_WERKS s/^0*//g\nset-column ScheduledReceiptOrderSiteValue CAUFV_WERKS\n\nScheduledReceiptOrderTypeValue\n--\nset-column ScheduledReceiptOrderTypeValue CAUFV_AUART\n\nDueDate\n--\nset-column DueDate RESB_BDTER\n\nRemainingQuantity\n--\nset-column RemainingQuantity RESB_BDMNG - RESB_ENMNG\n\nTotalQuantity\n--\nset-column TotalQuantity RESB_BDMNG\n\nShopSiteValue\n--\nset-column ShopSiteValue RESB_WERKS",
+                                "createDate": 1679067250462
+                            }
+                        ]
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "dependantReservations_CAUFV_LeftOuter_AFPO",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUART\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_AUTYP\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_GLTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GLTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GMEIN\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_GSTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_IGMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_OBJNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNAL\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_PLNTY\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"CAUFV_STLBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"CAUFV_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_POSNR\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_PSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_PWERK\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"AFPO_WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"AFPO_WEMNG\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                ],
+                "id": "dependantReservations_transform"
+            },
+            {
+                "name": "RejectedReservationsWithoutPO",
+                "plugin": {
+                    "name": "GCS",
+                    "type": "batchsink",
+                    "label": "RejectedReservationsWithoutPO",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "RejectedReservationsWithoutPO",
+                        "path": "${intermediate-data-bucket}/${source}.${timestamp}/Allocation/RejectedReservationsWithoutPO",
+                        "format": "tsv",
+                        "location": "us",
+                        "contentType": "application/octet-stream",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                        "writeHeader": "true",
+                        "outputFileNameBase": "RejectedReservationsWithoutPO"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "RejectedReservationsWithoutPO_filter_rejects",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "RejectedReservationsWithoutPO"
+            },
+            {
+                "name": "CAUFV_Source",
+                "plugin": {
+                    "name": "GCSFile",
+                    "type": "batchsource",
+                    "label": "CAUFV_Source",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "CAUFV_Source",
+                        "path": "${extracted-data-bucket}/${source}.${timestamp}/CAUFV.tab",
+                        "format": "tsv",
+                        "sampleSize": "1000",
+                        "filenameOnly": "false",
+                        "recursive": "false",
+                        "ignoreNonExistingFolders": "false",
+                        "encrypted": "false",
+                        "fileEncoding": "UTF-8",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"AUART\",\"type\":[\"string\",\"null\"]},{\"name\":\"AUTYP\",\"type\":[\"double\",\"null\"]},{\"name\":\"GAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"GLTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"GMEIN\",\"type\":[\"string\",\"null\"]},{\"name\":\"GSTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"GSTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"GSTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"IGMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"OBJNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNAL\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNTY\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"STLBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                        "enableQuotedValues": "false",
+                        "skipHeader": "true",
+                        "maxSplitSize": "${GCS_SOURCE_MAXIMUM_SPLIT_SIZE}"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"AUART\",\"type\":[\"string\",\"null\"]},{\"name\":\"AUTYP\",\"type\":[\"double\",\"null\"]},{\"name\":\"GAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"GLTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"GMEIN\",\"type\":[\"string\",\"null\"]},{\"name\":\"GSTRI\",\"type\":[\"string\",\"null\"]},{\"name\":\"GSTRP\",\"type\":[\"string\",\"null\"]},{\"name\":\"GSTRS\",\"type\":[\"string\",\"null\"]},{\"name\":\"IGMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"KDAUF\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"OBJNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNAL\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PLNTY\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"STLBEZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "id": "CAUFV_Source"
+            },
+            {
+                "name": "AFPO_Source",
+                "plugin": {
+                    "name": "GCSFile",
+                    "type": "batchsource",
+                    "label": "AFPO_Source",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "AFPO_Source",
+                        "path": "${extracted-data-bucket}/${source}.${timestamp}/AFPO.tab",
+                        "format": "tsv",
+                        "sampleSize": "1000",
+                        "filenameOnly": "false",
+                        "recursive": "false",
+                        "ignoreNonExistingFolders": "false",
+                        "encrypted": "false",
+                        "fileEncoding": "UTF-8",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"double\",\"null\"]},{\"name\":\"BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"PWERK\",\"type\":[\"string\",\"null\"]},{\"name\":\"SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEMNG\",\"type\":[\"double\",\"null\"]}]}",
+                        "enableQuotedValues": "false",
+                        "skipHeader": "true",
+                        "maxSplitSize": "${GCS_SOURCE_MAXIMUM_SPLIT_SIZE}"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"double\",\"null\"]},{\"name\":\"BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"PSMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"PWERK\",\"type\":[\"string\",\"null\"]},{\"name\":\"SERNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEMNG\",\"type\":[\"double\",\"null\"]}]}",
+                "id": "AFPO_Source"
+            },
+            {
+                "name": "dependantReservations_filter",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "dependantReservations_filter",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "BDART !~ \"BB\"",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "information": {
+                    "comments": {
+                        "list": [
+                            {
+                                "content": "Filter out where BDART column value is not equal to “BB”",
+                                "createDate": 1679067250462
+                            }
+                        ]
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "RESB_Source",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "dependantReservations_filter"
+            },
+            {
+                "name": "dependantReservations_LeftOuter_purchaseDocumentsWithDependencies",
+                "plugin": {
+                    "name": "Joiner",
+                    "type": "batchjoiner",
+                    "label": "dependantReservations_LeftOuter_purchaseDocumentsWithDependencies",
+                    "artifact": {
+                        "name": "core-plugins",
+                        "version": "2.11.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "conditionType": "basic",
+                        "joinNullKeys": "false",
+                        "distributionEnabled": "false",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKKO_BSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKKO_RESWK\",\"type\":[\"string\",\"null\"]}]}",
+                        "selectedFields": "dependantReservations_filter.MANDT as RESB_MANDT,dependantReservations_filter.RSART as RESB_RSART,dependantReservations_filter.RSNUM as RESB_RSNUM,dependantReservations_filter.RSPOS as RESB_RSPOS,dependantReservations_filter.AUFNR as RESB_AUFNR,dependantReservations_filter.BAUGR as RESB_BAUGR,dependantReservations_filter.BDART as RESB_BDART,dependantReservations_filter.BDMNG as RESB_BDMNG,dependantReservations_filter.BDTER as RESB_BDTER,dependantReservations_filter.BWART as RESB_BWART,dependantReservations_filter.EBELE as RESB_EBELE,dependantReservations_filter.EBELN as RESB_EBELN,dependantReservations_filter.EBELP as RESB_EBELP,dependantReservations_filter.ENMNG as RESB_ENMNG,dependantReservations_filter.LGORT as RESB_LGORT,dependantReservations_filter.LIFNR as RESB_LIFNR,dependantReservations_filter.MATNR as RESB_MATNR,dependantReservations_filter.POSNR as RESB_POSNR,dependantReservations_filter.SHKZG as RESB_SHKZG,dependantReservations_filter.UMLGO as RESB_UMLGO,dependantReservations_filter.UMWRK as RESB_UMWRK,dependantReservations_filter.VORNR as RESB_VORNR,dependantReservations_filter.WAERS as RESB_WAERS,dependantReservations_filter.WERKS as RESB_WERKS,EKET_EKPO_innerjoin_EKKO.EKET_EBELN as EKET_EBELN,EKET_EKPO_innerjoin_EKKO.EKET_EBELP as EKET_EBELP,EKET_EKPO_innerjoin_EKKO.EKET_ETENR as EKET_ETENR,EKET_EKPO_innerjoin_EKKO.EKKO_RESWK as EKKO_RESWK,EKET_EKPO_innerjoin_EKKO.EKKO_BSART as EKKO_BSART,EKET_EKPO_innerjoin_EKKO.EKET_RSNUM as EKET_RSNUM",
+                        "requiredInputs": "dependantReservations_filter",
+                        "joinKeys": "EKET_EKPO_innerjoin_EKKO.EKET_RSNUM = dependantReservations_filter.RSNUM"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKKO_BSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKKO_RESWK\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "dependantReservations_filter",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "EKET_EKPO_innerjoin_EKKO",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EKET_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKKO_RESWK\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKKO_BSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_RSNUM\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                ],
+                "id": "dependantReservations_LeftOuter_purchaseDocumentsWithDependencies"
+            },
+            {
+                "name": "purchaseDocumentsWithDependencies_transform",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "purchaseDocumentsWithDependencies_transform",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "RESB_RSNUM !~ EKET_RSNUM",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                        "directives": "set-column PartName RESB_MATNR\r\nset-column PartSiteValue RESB_WERKS\r\nset-column ScheduledReceiptLine format(\"%6.0f\",EKET_EBELP).replace(\" \",\"0\") + \"-\" + format(\"%4.0f\",EKET_ETENR).replace(\" \",\"0\")\r\nfind-and-replace EKET_EBELN s/^0*//g\r\nset-column ScheduledReceiptOrderId EKET_EBELN\r\nset-column ScheduledReceiptOrderSiteValue RESB_WERKS\r\nset-column ScheduledReceiptOrderTypeValue EKKO_BSART\r\nset-column DueDate RESB_BDTER\r\nset-column RemainingQuantity RESB_BDMNG - RESB_ENMNG\r\nset-column TotalQuantity RESB_BDMNG\r\nset-column ShopSiteValue RESB_WERKS"
+                    }
+                },
+                "information": {
+                    "comments": {
+                        "list": [
+                            {
+                                "content": "PartName\n--\nset-column PartName RESB_MATNR\n\nPartSiteValue\n--\nset-column PartSiteValue RESB_WERKS\n\nScheduledReceiptLine\n--\nset-column ScheduledReceiptLine format(\"%6.0f\",EKET_EBELP).replace(\" \",\"0\") + \"-\" + format(\"%4.0f\",EKET_ETENR).replace(\" \",\"0\")\n\nScheduledReceiptOrderId\n--\nfind-and-replace EKET_EBELN s/^0*//g\nset-column ScheduledReceiptOrderId EKET_EBELN\n\nScheduledReceiptOrderSiteValue\n--\nset-column ScheduledReceiptOrderSiteValue RESB_WERKS\n\nScheduledReceiptOrderTypeValue\n--\nset-column ScheduledReceiptOrderTypeValue EKKO_BSART\n\nDueDate\n--\nset-column DueDate RESB_BDTER\n\nRemainingQuantity\n--\nset-column RemainingQuantity RESB_BDMNG - RESB_ENMNG\n\nTotalQuantity\n--\nset-column TotalQuantity RESB_BDMNG\n\nShopSiteValue\n--\nset-column ShopSiteValue RESB_WERKS",
+                                "createDate": 1679067250462
+                            }
+                        ]
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"PartName\",\"type\":[\"string\",\"null\"]},{\"name\":\"PartSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptLine\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderId\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderSiteValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"ScheduledReceiptOrderTypeValue\",\"type\":[\"string\",\"null\"]},{\"name\":\"DueDate\",\"type\":[\"string\",\"null\"]},{\"name\":\"RemainingQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"TotalQuantity\",\"type\":[\"double\",\"null\"]},{\"name\":\"ShopSiteValue\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "dependantReservations_LeftOuter_purchaseDocumentsWithDependencies",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKKO_BSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKKO_RESWK\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "purchaseDocumentsWithDependencies_transform"
+            },
+            {
+                "name": "RejectedReservationsWithoutProdOrd_filter_rejects",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "RejectedReservationsWithoutProdOrd_filter_rejects",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "RESB_RSNUM == EKET_RSNUM",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "information": {
+                    "comments": {}
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "dependantReservations_LeftOuter_purchaseDocumentsWithDependencies",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"RESB_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BAUGR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BWART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_POSNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_SHKZG\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMLGO\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_UMWRK\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_VORNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WAERS\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKKO_BSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKKO_RESWK\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "RejectedReservationsWithoutProdOrd_filter_rejects"
+            },
+            {
+                "name": "EKET_Source",
+                "plugin": {
+                    "name": "GCSFile",
+                    "type": "batchsource",
+                    "label": "EKET_Source",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "EKET_Source",
+                        "path": "${extracted-data-bucket}/${source}.${timestamp}/EKET.tab",
+                        "format": "tsv",
+                        "sampleSize": "1000",
+                        "filenameOnly": "false",
+                        "recursive": "false",
+                        "ignoreNonExistingFolders": "false",
+                        "encrypted": "false",
+                        "fileEncoding": "UTF-8",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"DABMG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EINDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"MBDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"SLFDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEMNG\",\"type\":[\"double\",\"null\"]}]}",
+                        "enableQuotedValues": "false",
+                        "skipHeader": "true",
+                        "maxSplitSize": "${GCS_SOURCE_MAXIMUM_SPLIT_SIZE}"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"DABMG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EINDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"MBDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"SLFDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEMNG\",\"type\":[\"double\",\"null\"]}]}",
+                "id": "EKET_Source"
+            },
+            {
+                "name": "EKET_filter",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "EKET_filter",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.9.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "field": "*",
+                        "precondition": "EBELN == null || RSNUM == 0",
+                        "on-error": "fail-pipeline",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"DABMG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EINDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"MBDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"SLFDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEMNG\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                },
+                "information": {
+                    "comments": {
+                        "list": [
+                            {
+                                "content": "Filter out where EBELN is null or RSNUM is equal to 0",
+                                "createDate": 1679067250462
+                            }
+                        ]
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"DABMG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EINDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"MBDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"SLFDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEMNG\",\"type\":[\"double\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "EKET_Source",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"DABMG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EINDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"MBDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"SLFDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEMNG\",\"type\":[\"double\",\"null\"]}]}"
+                    }
+                ],
+                "id": "EKET_filter"
+            },
+            {
+                "name": "EKET_innerjoin_EKPO",
+                "plugin": {
+                    "name": "Joiner",
+                    "type": "batchjoiner",
+                    "label": "EKET_innerjoin_EKPO",
+                    "artifact": {
+                        "name": "core-plugins",
+                        "version": "2.11.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "selectedFields": "EKET_filter.EBELN as EKET_EBELN,EKET_filter.EBELP as EKET_EBELP,EKET_filter.ETENR as EKET_ETENR,EKET_filter.MANDT as EKET_MANDT,EKET_filter.BEDAT as EKET_BEDAT,EKET_filter.DABMG as EKET_DABMG,EKET_filter.EINDT as EKET_EINDT,EKET_filter.GLMNG as EKET_GLMNG,EKET_filter.MBDAT as EKET_MBDAT,EKET_filter.MENGE as EKET_MENGE,EKET_filter.RSNUM as EKET_RSNUM,EKET_filter.SLFDT as EKET_SLFDT,EKET_filter.WAMNG as EKET_WAMNG,EKET_filter.WEMNG as EKET_WEMNG,EKPO_Source.EBELN as EKPO_EBELN,EKPO_Source.EBELP as EKPO_EBELP,EKPO_Source.MANDT as EKPO_MANDT,EKPO_Source.BEDNR as EKPO_BEDNR,EKPO_Source.BERID as EKPO_BERID,EKPO_Source.BPRME as EKPO_BPRME,EKPO_Source.BPUMN as EKPO_BPUMN,EKPO_Source.BPUMZ as EKPO_BPUMZ,EKPO_Source.BSTYP as EKPO_BSTYP,EKPO_Source.EMLIF as EKPO_EMLIF,EKPO_Source.INFNR as EKPO_INFNR,EKPO_Source.INSMK as EKPO_INSMK,EKPO_Source.KNTTP as EKPO_KNTTP,EKPO_Source.LBLKZ as EKPO_LBLKZ,EKPO_Source.LGORT as EKPO_LGORT,EKPO_Source.MATNR as EKPO_MATNR,EKPO_Source.MEINS as EKPO_MEINS,EKPO_Source.MENGE as EKPO_MENGE,EKPO_Source.NETPR as EKPO_NETPR,EKPO_Source.PEINH as EKPO_PEINH,EKPO_Source.PLIFZ as EKPO_PLIFZ,EKPO_Source.PSTYP as EKPO_PSTYP,EKPO_Source.SOBKZ as EKPO_SOBKZ,EKPO_Source.UMREN as EKPO_UMREN,EKPO_Source.UMREZ as EKPO_UMREZ,EKPO_Source.WEBAZ as EKPO_WEBAZ,EKPO_Source.WERKS as EKPO_WERKS",
+                        "requiredInputs": "EKET_filter,EKPO_Source",
+                        "conditionType": "basic",
+                        "joinKeys": "EKPO_Source.EBELN = EKET_filter.EBELN & EKPO_Source.EBELP = EKET_filter.EBELP & EKPO_Source.MANDT = EKET_filter.MANDT",
+                        "joinNullKeys": "false",
+                        "distributionEnabled": "false",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"EKET_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_DABMG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_EINDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_GLMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_MBDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_SLFDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_WAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_WEMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BEDNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BPRME\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BPUMN\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_BPUMZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_BSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_EMLIF\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_INFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_INSMK\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_KNTTP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_LBLKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_NETPR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_PEINH\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_PLIFZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_PSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_SOBKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_UMREN\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_UMREZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"EKET_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_DABMG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_EINDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_GLMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_MBDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_SLFDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_WAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_WEMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BEDNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BPRME\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BPUMN\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_BPUMZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_BSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_EMLIF\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_INFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_INSMK\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_KNTTP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_LBLKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_NETPR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_PEINH\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_PLIFZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_PSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_SOBKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_UMREN\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_UMREZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "EKET_filter",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"DABMG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EINDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"GLMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"MBDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"SLFDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEMNG\",\"type\":[\"double\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "EKPO_Source",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"BPRME\",\"type\":[\"string\",\"null\"]},{\"name\":\"BPUMN\",\"type\":[\"double\",\"null\"]},{\"name\":\"BPUMZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"BSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EMLIF\",\"type\":[\"string\",\"null\"]},{\"name\":\"INFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"INSMK\",\"type\":[\"string\",\"null\"]},{\"name\":\"KNTTP\",\"type\":[\"string\",\"null\"]},{\"name\":\"LBLKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"NETPR\",\"type\":[\"double\",\"null\"]},{\"name\":\"PEINH\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLIFZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"PSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"SOBKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMREN\",\"type\":[\"double\",\"null\"]},{\"name\":\"UMREZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "EKET_innerjoin_EKPO"
+            },
+            {
+                "name": "EKET_EKPO_innerjoin_EKKO",
+                "plugin": {
+                    "name": "Joiner",
+                    "type": "batchjoiner",
+                    "label": "EKET_EKPO_innerjoin_EKKO",
+                    "artifact": {
+                        "name": "core-plugins",
+                        "version": "2.11.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "conditionType": "basic",
+                        "joinNullKeys": "false",
+                        "distributionEnabled": "false",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EKET_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKKO_RESWK\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKKO_BSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_RSNUM\",\"type\":[\"double\",\"null\"]}]}",
+                        "selectedFields": "EKET_innerjoin_EKPO.EKET_EBELN as EKET_EBELN,EKET_innerjoin_EKPO.EKET_EBELP as EKET_EBELP,EKET_innerjoin_EKPO.EKET_ETENR as EKET_ETENR,EKET_innerjoin_EKPO.EKET_MANDT as EKET_MANDT,EKET_innerjoin_EKPO.EKET_BEDAT as EKET_BEDAT,EKET_innerjoin_EKPO.EKET_DABMG as EKET_DABMG,EKET_innerjoin_EKPO.EKET_EINDT as EKET_EINDT,EKET_innerjoin_EKPO.EKET_GLMNG as EKET_GLMNG,EKET_innerjoin_EKPO.EKET_MBDAT as EKET_MBDAT,EKET_innerjoin_EKPO.EKET_MENGE as EKET_MENGE,EKET_innerjoin_EKPO.EKET_RSNUM as EKET_RSNUM,EKET_innerjoin_EKPO.EKET_SLFDT as EKET_SLFDT,EKET_innerjoin_EKPO.EKET_WAMNG as EKET_WAMNG,EKET_innerjoin_EKPO.EKET_WEMNG as EKET_WEMNG,EKET_innerjoin_EKPO.EKPO_EBELN as EKPO_EBELN,EKET_innerjoin_EKPO.EKPO_EBELP as EKPO_EBELP,EKET_innerjoin_EKPO.EKPO_MANDT as EKPO_MANDT,EKET_innerjoin_EKPO.EKPO_BEDNR as EKPO_BEDNR,EKET_innerjoin_EKPO.EKPO_BERID as EKPO_BERID,EKET_innerjoin_EKPO.EKPO_BPRME as EKPO_BPRME,EKET_innerjoin_EKPO.EKPO_BPUMN as EKPO_BPUMN,EKET_innerjoin_EKPO.EKPO_BPUMZ as EKPO_BPUMZ,EKET_innerjoin_EKPO.EKPO_BSTYP as EKPO_BSTYP,EKET_innerjoin_EKPO.EKPO_EMLIF as EKPO_EMLIF,EKET_innerjoin_EKPO.EKPO_INFNR as EKPO_INFNR,EKET_innerjoin_EKPO.EKPO_INSMK as EKPO_INSMK,EKET_innerjoin_EKPO.EKPO_KNTTP as EKPO_KNTTP,EKET_innerjoin_EKPO.EKPO_LBLKZ as EKPO_LBLKZ,EKET_innerjoin_EKPO.EKPO_LGORT as EKPO_LGORT,EKET_innerjoin_EKPO.EKPO_MATNR as EKPO_MATNR,EKET_innerjoin_EKPO.EKPO_MEINS as EKPO_MEINS,EKET_innerjoin_EKPO.EKPO_MENGE as EKPO_MENGE,EKET_innerjoin_EKPO.EKPO_NETPR as EKPO_NETPR,EKET_innerjoin_EKPO.EKPO_PEINH as EKPO_PEINH,EKET_innerjoin_EKPO.EKPO_PLIFZ as EKPO_PLIFZ,EKET_innerjoin_EKPO.EKPO_PSTYP as EKPO_PSTYP,EKET_innerjoin_EKPO.EKPO_SOBKZ as EKPO_SOBKZ,EKET_innerjoin_EKPO.EKPO_UMREN as EKPO_UMREN,EKET_innerjoin_EKPO.EKPO_UMREZ as EKPO_UMREZ,EKET_innerjoin_EKPO.EKPO_WEBAZ as EKPO_WEBAZ,EKET_innerjoin_EKPO.EKPO_WERKS as EKPO_WERKS,EKKO_Source.EBELN as EKKO_EBELN,EKKO_Source.MANDT as EKKO_MANDT,EKKO_Source.BEDAT as EKKO_BEDAT,EKKO_Source.BSART as EKKO_BSART,EKKO_Source.BSTYP as EKKO_BSTYP,EKKO_Source.EKORG as EKKO_EKORG,EKKO_Source.FRGKE as EKKO_FRGKE,EKKO_Source.KDATB as EKKO_KDATB,EKKO_Source.KDATE as EKKO_KDATE,EKKO_Source.LIFNR as EKKO_LIFNR,EKKO_Source.LLIEF as EKKO_LLIEF,EKKO_Source.LOEKZ as EKKO_LOEKZ,EKKO_Source.RESWK as EKKO_RESWK,EKKO_Source.STATU as EKKO_STATU,EKKO_Source.WAERS as EKKO_WAERS",
+                        "requiredInputs": "EKET_innerjoin_EKPO",
+                        "joinKeys": "EKET_innerjoin_EKPO.EKET_EBELN = EKKO_Source.EBELN & EKET_innerjoin_EKPO.EKET_MANDT = EKKO_Source.MANDT"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EKET_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKKO_RESWK\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKKO_BSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_RSNUM\",\"type\":[\"double\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "EKET_innerjoin_EKPO",
+                        "schema": "{\"type\":\"record\",\"name\":\"join.typeoutput\",\"fields\":[{\"name\":\"EKET_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_ETENR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_DABMG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_EINDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_GLMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_MBDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_SLFDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKET_WAMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKET_WEMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BEDNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BPRME\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_BPUMN\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_BPUMZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_BSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_EMLIF\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_INFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_INSMK\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_KNTTP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_LBLKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_NETPR\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_PEINH\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_PLIFZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_PSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_SOBKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKPO_UMREN\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_UMREZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"EKPO_WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "EKKO_Source",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKORG\",\"type\":[\"string\",\"null\"]},{\"name\":\"FRGKE\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDATB\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDATE\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"LLIEF\",\"type\":[\"string\",\"null\"]},{\"name\":\"LOEKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESWK\",\"type\":[\"string\",\"null\"]},{\"name\":\"STATU\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "EKET_EKPO_innerjoin_EKKO"
+            },
+            {
+                "name": "EKPO_Source",
+                "plugin": {
+                    "name": "GCSFile",
+                    "type": "batchsource",
+                    "label": "EKPO_Source",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "EKPO_Source",
+                        "path": "${extracted-data-bucket}/${source}.${timestamp}/EKPO.tab",
+                        "format": "tsv",
+                        "sampleSize": "1000",
+                        "filenameOnly": "false",
+                        "recursive": "false",
+                        "ignoreNonExistingFolders": "false",
+                        "encrypted": "false",
+                        "fileEncoding": "UTF-8",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"BPRME\",\"type\":[\"string\",\"null\"]},{\"name\":\"BPUMN\",\"type\":[\"double\",\"null\"]},{\"name\":\"BPUMZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"BSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EMLIF\",\"type\":[\"string\",\"null\"]},{\"name\":\"INFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"INSMK\",\"type\":[\"string\",\"null\"]},{\"name\":\"KNTTP\",\"type\":[\"string\",\"null\"]},{\"name\":\"LBLKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"NETPR\",\"type\":[\"double\",\"null\"]},{\"name\":\"PEINH\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLIFZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"PSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"SOBKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMREN\",\"type\":[\"double\",\"null\"]},{\"name\":\"UMREZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                        "enableQuotedValues": "false",
+                        "skipHeader": "true",
+                        "maxSplitSize": "${GCS_SOURCE_MAXIMUM_SPLIT_SIZE}"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"EBELP\",\"type\":[\"double\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"BERID\",\"type\":[\"string\",\"null\"]},{\"name\":\"BPRME\",\"type\":[\"string\",\"null\"]},{\"name\":\"BPUMN\",\"type\":[\"double\",\"null\"]},{\"name\":\"BPUMZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"BSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EMLIF\",\"type\":[\"string\",\"null\"]},{\"name\":\"INFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"INSMK\",\"type\":[\"string\",\"null\"]},{\"name\":\"KNTTP\",\"type\":[\"string\",\"null\"]},{\"name\":\"LBLKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"LGORT\",\"type\":[\"string\",\"null\"]},{\"name\":\"MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"MEINS\",\"type\":[\"string\",\"null\"]},{\"name\":\"MENGE\",\"type\":[\"double\",\"null\"]},{\"name\":\"NETPR\",\"type\":[\"double\",\"null\"]},{\"name\":\"PEINH\",\"type\":[\"double\",\"null\"]},{\"name\":\"PLIFZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"PSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"SOBKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"UMREN\",\"type\":[\"double\",\"null\"]},{\"name\":\"UMREZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"WEBAZ\",\"type\":[\"double\",\"null\"]},{\"name\":\"WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "id": "EKPO_Source"
+            },
+            {
+                "name": "EKKO_Source",
+                "plugin": {
+                    "name": "GCSFile",
+                    "type": "batchsource",
+                    "label": "EKKO_Source",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "EKKO_Source",
+                        "path": "${extracted-data-bucket}/${source}.${timestamp}/EKKO.tab",
+                        "format": "tsv",
+                        "sampleSize": "1000",
+                        "filenameOnly": "false",
+                        "recursive": "false",
+                        "ignoreNonExistingFolders": "false",
+                        "encrypted": "false",
+                        "fileEncoding": "UTF-8",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKORG\",\"type\":[\"string\",\"null\"]},{\"name\":\"FRGKE\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDATB\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDATE\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"LLIEF\",\"type\":[\"string\",\"null\"]},{\"name\":\"LOEKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESWK\",\"type\":[\"string\",\"null\"]},{\"name\":\"STATU\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]}]}",
+                        "enableQuotedValues": "false",
+                        "skipHeader": "true",
+                        "maxSplitSize": "${GCS_SOURCE_MAXIMUM_SPLIT_SIZE}"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"EBELN\",\"type\":[\"string\",\"null\"]},{\"name\":\"MANDT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BEDAT\",\"type\":[\"string\",\"null\"]},{\"name\":\"BSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"BSTYP\",\"type\":[\"string\",\"null\"]},{\"name\":\"EKORG\",\"type\":[\"string\",\"null\"]},{\"name\":\"FRGKE\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDATB\",\"type\":[\"string\",\"null\"]},{\"name\":\"KDATE\",\"type\":[\"string\",\"null\"]},{\"name\":\"LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"LLIEF\",\"type\":[\"string\",\"null\"]},{\"name\":\"LOEKZ\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESWK\",\"type\":[\"string\",\"null\"]},{\"name\":\"STATU\",\"type\":[\"string\",\"null\"]},{\"name\":\"WAERS\",\"type\":[\"string\",\"null\"]}]}",
+                "id": "EKKO_Source"
+            },
+            {
+                "name": "RejectedReservationsWithoutProdOrd",
+                "plugin": {
+                    "name": "GCS",
+                    "type": "batchsink",
+                    "label": "RejectedReservationsWithoutProdOrd",
+                    "artifact": {
+                        "name": "google-cloud",
+                        "version": "0.22.1",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "useConnection": "false",
+                        "project": "auto-detect",
+                        "serviceAccountType": "filePath",
+                        "serviceFilePath": "auto-detect",
+                        "referenceName": "RejectedReservationsWithoutProdOrd",
+                        "path": "${intermediate-data-bucket}/${source}.${timestamp}/Allocation/RejectedReservationsWithoutProdOrd",
+                        "format": "tsv",
+                        "location": "us",
+                        "contentType": "application/octet-stream",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                        "writeHeader": "true",
+                        "outputFileNameBase": "RejectedReservationsWithoutProdOrd"
+                    }
+                },
+                "outputSchema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}",
+                "inputSchema": [
+                    {
+                        "name": "RejectedReservationsWithoutProdOrd_filter_rejects",
+                        "schema": "{\"name\":\"etlSchemaBody\",\"type\":\"record\",\"fields\":[{\"name\":\"RESB_RSART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_RSNUM\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_RSPOS\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_AUFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDART\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_BDMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_BDTER\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_ENMNG\",\"type\":[\"double\",\"null\"]},{\"name\":\"RESB_LIFNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_MATNR\",\"type\":[\"string\",\"null\"]},{\"name\":\"RESB_WERKS\",\"type\":[\"string\",\"null\"]}]}"
+                    }
+                ],
+                "id": "RejectedReservationsWithoutProdOrd"
+            }
+        ],
+        "schedule": "0 1 */1 * *",
+        "engine": "spark",
+        "numOfRecordsPreview": 100,
+        "rangeRecordsPreview": {
+            "min": 1,
+            "max": "5000"
+        },
+        "description": "Data Pipeline Application",
+        "maxConcurrentRuns": 1
+    },
+    "version": "adff2b20-08c3-11ee-9390-b6dde77a2af1"
+}
